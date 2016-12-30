@@ -1,0 +1,101 @@
+---
+title: "Práctica Análisis Exploratorio"
+author: "María del Carmen Rodríguez Hernández"
+date: "30 de diciembre de 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#**Práctica Análisis Exploratorio en R**
+
+##1. **_Introducción_**
+
+En esta práctica vamos a trabajar con dos dataset que nos dan información muy variada sobre los alumnos de matemáticas y portugués. Solo vamos a llegar a hacer el análisis exploratorio, pero este trabajo podría culminarse haciendo un descriptivo para intentar prever, por ejemplo, que alumnos son más susceptibles de suspender las asignaturas en función de las ausencias, los suspensos y la cantidad de tiempo libro o salidas de ocio que tienen.
+
+Así se podrían tomar medidas para intentar disminuir esas distracciones y que las notas de los alumnos mejorasen.
+
+
+
+##2. **_Carga de datos_**
+
+Tenemos los dos dataset, el de los estudiantes de matemáticas y los de portugúes. Vamos a cargarlos y a unirlos en un solo dataset, que llamamos matpor, utilizando la función _merge_.
+
+```{r}
+library(readr)
+
+mat=read.table("student-mat.csv",sep=";",header=TRUE)
+por=read.table("student-por.csv",sep=";",header=TRUE)
+
+matpor=merge(mat,por,by=c("school","sex","age","address","famsize","Pstatus","Medu","Fedu","Mjob","Fjob","reason","nursery","internet"))
+print(nrow(matpor))
+```
+
+
+
+##3. **_Análisis descriptivo_**
+
+En esta sección vamos a intentar visualizar que es lo que tenemos en nuestro dataset.
+Primero vamos a buscar si hay NA.
+
+```{r}
+sum(is.na(matpor))
+```
+
+Vemos que no hay Missing Values.
+
+Utilizamos la función _str_, que nos va a dar mucha información del dataset.Nos saca las columnas que tenemos, analiza en cuantos levels podemos dividirlas, que opcione tenemos en las que no son numéricas,etc.
+
+```{r}
+str(matpor)
+```
+
+A continuación vamos a tratar de sacar información relacionada con las notas de los alumnos. Pintamos primero las notas de finales de matemáticas, pero vemos que no sacamos ninguna información:
+
+```{r}
+notasmat <- matpor$G3.x
+barplot(notasmat) 
+```
+
+Ahora vamos a dividir en levels las notas. Hacemos 6 niveles que comprenden diferentes intervalos de notas, y representamos cuantos alumnos nos entran dentro de cada level. Este plot si que nos aporta información.
+
+```{r}
+fn <- factor(notasmat)
+plot(fn, xlab='Nota', ylab='Nº Alumnos', main='Notas en Matemáticas')
+
+levels(fn) <- c("S", "S", "S", "S", "S","S", "S", "A", "A", "A", "B", "B", "B", "N", "N", "N", "E", "E", "MH")
+fntable <- prop.table(table(fn))*100
+barplot(fntable, main='Calificaciones', xlab='Calificaición: S=Suspenso, A=Aprobado, B=Bien, N=Notable, E=Excelente, MH=Matrícula de Honor', ylab='%')
+```
+
+Vemos que hay un porcentaje muy alto de suspensos. Esta puede ser una gran motivación para realizar un análisis predictivo, y poder así influir en el rendimiento de los alumnos y conseguir que las notas mejoren.
+
+
+
+##4. **_Análisis exploratorio_**
+
+Comenzamos el exploratorio. 
+Como primer método,vamos a buscar matrices de correlación para alguna de las variables que creemos que pueden tener algún tipo de relación entre ellas.
+
+```{r}
+cor(matpor[,c("G3.x","failures.x")])
+cor(matpor[,c("G3.x","G3.y")])
+```
+
+Como segunda opción utilizamos un método no supervisado, que va a permitirnos buscar correlaciones como las anteriores pero de varias variables a la vez, y de manera mucho más visual:
+
+```{r warning=FALSE}
+require("PerformanceAnalytics")
+chart.Correlation(matpor[,c("age","failures.x","failures.y","absences.x","absences.y","freetime.x","freetime.y","G3.x","G3.y")])
+```
+
+Observando la última representación podemos ver correlaciones muy fuertes entre el tiempo libre que dedican los alumnos en matemáticas y portugués. Vemos también que hay una correlación negativa entre los suspensos y la nota de ambas asignaturas, algo que es de esperar y que ya habíamos podido ver con la matriz de correlación obtenida anteriormente.
+
+También podemos ver relación entre la edad y los suspensos o una correlación negativa entre el número de ausencias y la nota final.
+
+
+##5. **_Conclusiones_**
+
+Como conclusión extraemos que un análisis descriptivo es siempre necesario para tener una primera idea de que es lo que tenemos en los datos y para encontrar posibles objetivos a abordar en el análisis exploratorio y predictivo.

@@ -1,0 +1,145 @@
+---
+title: "Práctica Limpieza de Datos"
+author: "María del Carmen Rodríguez Hernández"
+date: "30 de diciembre de 2016"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+#**Práctica Preparación y Manipulación Datos en R**
+
+##1. **_Objetivo_**
+
+En esta práctica trataremos de manipular un dataset con datos en crudo para obtener un tidy dataset, que podamos utilizar posteriormente para hacer un modelo, un análisis predictivo, etc.
+
+Para la realización de la práctica vamos a hacer uso de la librería dplyr, que utilizaremos para separar cada columna a limpiar y trabajar únicamente con la parte del dataset que nos interesa en cada caso.
+
+
+
+
+##2. **_Lectura de datos_**
+
+Cargamos la librería "readr", que vamos a necesitar.
+Utilizamos la función getwd() para que el usuario pueda ejecutar el script desde el directorio que le interese, únicamente tendrá que llegar a él a través de la consola.Es importante mencionar que no se puede cambiar el nombre original con el que se descarga el archivo.
+
+Sacamos el dataset para poder verlo y valorar que es lo que tenemos y como tenemos que abordarlo.
+Además, creamos un "TidyData", para trabajar sobre el y no modificar el original.
+
+```{r}
+library(readr)
+dir <- getwd()
+RawData <- read_csv("EXAMPLE_DataToClean - Sheet 1.csv")
+View(RawData)
+
+TidyData <- RawData
+
+```
+
+
+##3. **_Limpieza y preparación_**
+
+Ya hemos podido ver el dataset y encontramos los primeros cambios a realizar. Vamos a utilizar en este proceso de limpieza algunas librerías que cargamos a continuación:
+
+```{r}
+library(zoo)
+library(dplyr)
+```
+
+
+En la columna 2 tenemos un gran número de NA. Pedimos que nos los cuente, para ver de cuántos valores estamos hablando:
+
+```{r}
+C2 <- select(RawData, 2:2)
+sum(is.na(C2))
+```
+
+
+Tenemos 5265 valores NA de una matriz que tiene 5279 entradas, es decir, únicamente hay 14 filas con valor. 
+
+Lo que vamos a hacer, como nos piden en la cabecera de la columna, es rellenar hacia abajo los NA con el valor que encuentre. En la primera fila tenemos "birmingham"; rellenaremos todas las entradas hacia abajo con esto hasta que encontremos un valor diferente, y procederemos con él de igual modo hasta completar toda la columna. 
+Para ello utilizamos la función na.locf:
+
+```{r}
+newC2 <- na.locf(C2)
+
+```
+
+Con las columnas 3 y 4 vemos que los problemas vienen por errores o diferencias en la escritura de ciertas palabras. 
+Seleccionamos una matriz formada por estas dos columnas juntas, ya que la limpieza que vamos a realizar va a ser la misma para ambas.
+
+
+Vamos a llevar a cabo una sustitución de ciertas cadenas de caracteres, cambiamos palabras como "rd" por "road" o "st" por "street", para intentar que los strings sean lo más homogéneos posibles en el dataset, y podamos así hacer un análisis correcto de los datos.
+
+También vamos a cambiar todas las letras a minúsculas, debido a que encontramos palabras que tienen la primera letra en mayúscula y otras que no.
+
+Corregiremos también los diferentes usos de ",", dejando todos poniendo "coma-espacio".
+
+Hemos encontrado otra cadena ("<U+0.0089>û"") que hemos eliminado directamente, aunque quizá lo correcto sería poner un espacio o un apóstrofe, pero no estábamos seguros.
+
+```{r}
+C3C4 <- select(RawData, 3:4)
+
+for(i in 1:5279) C3C4[i,] <- tolower(C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="å" , replace=" ", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern=" , " , replace=", ", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="," , replace=", ",C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="\\." , replace=" ", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="raod" , replace="road", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="rd" , replace="road", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="bham" , replace="birmingham", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="sc" , replace="sutton coldfield", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="st" , replace="street", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="@" , replace=" ", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="]#" , replace="", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="`" , replace="", C3C4[i,])
+for(i in 1:5279) C3C4[i,] <- gsub(pattern="<U+0.0089>û" , replace="", C3C4[i,])
+View(C3C4)
+
+```
+
+Para la 5ª columna vamos a utilizar la función curl_unescape:
+
+```{r}
+library(curl)
+C5 <- select(RawData, 5:5)
+newC5 <- curl_unescape(C5)
+```
+
+
+Reemplazamos estas columnas que hemos limpiado en nuestro "TidyData" y pedimos que nos lo muestre.
+
+```{r}
+TidyData[,2] <- newC2
+TidyData[,3] <- C3C4[,1]
+TidyData[,4] <- C3C4[,2]
+TidyData[,5] <- newC5
+View(TidyData)
+```
+
+
+
+##4. **_Salida del tidy dataset_**
+
+Escribimos en un archivo csv el dataset que hemos conseguido trás la limpieza.
+
+```{r}
+write.csv(TidyData,'EXAMPLE_TidyData.csv')
+```
+
+
+
+##5. **_Conclusiones_**
+
+La sensación general trás la realización de esta tarea es que hay muchas cosas que cambiar en un dataset que no llega limpio.
+En las columnas 3 y 4 hemos cambiado todas las que hemos ido encontrando, pero esto supone ir mirando los datos buscando irregularidades.
+
+Además, hay algunas entradas que no he sabido si modificar. En algunos casos hay coincidencias parciales entre unas calles y otras, teniendo más información en unas entradas que en otras. Por ejemplo, hay entradas en las que pone "coventry road" y en otras "coventry road, birmingham". Hay varios casos de este estilo. Se me ocurrió que quizá podía completar aquellas que tenían menos información basándome en las que son similares, pero no estaba segura de si era correcto, ni de como hacerlo de manera eficiente.
+
+También encontré problemas con las comas. Hay entradas que tienen separadas por comas la calle y la ciudad, y otras en las que todo está separado por espacios. 
+Pensé en quitar todas las comas para homogeneizar las columnas, pero creía que eso podía quitar información.
+
+Concluyendo, creo que hay que tener mil ojos, estar muy atenta a todos los posibles fallos o irregularidades que aparecen en los datos y saber decidir qué acciones son mejores que cuales en la limpieza del dataset.
+Me ha parecido una tarea algo monótona, pero es gratificante cuando el dataset va apareciendo cada vez más claro y más limpio.
